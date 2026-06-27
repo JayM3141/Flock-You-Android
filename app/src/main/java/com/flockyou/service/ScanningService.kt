@@ -922,7 +922,7 @@ class ScanningService : Service() {
             startCellularMonitoring()
         }
 
-        // Start Shannon SDM diagnostic monitoring (OEM only, after cellular)
+        // Start Shannon SDM diagnostic monitoring (after cellular; degrades gracefully where unavailable)
         startShannonDiagMonitoring()
 
         // Start satellite monitoring
@@ -1135,6 +1135,7 @@ class ScanningService : Service() {
         stopRfSignalAnalysis()
         stopUltrasonicDetection()
         stopGnssMonitoring()
+        stopShannonDiagMonitoring()
 
         // Stop health check job
         stopHealthCheckJob()
