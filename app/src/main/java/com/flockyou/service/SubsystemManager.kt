@@ -875,6 +875,7 @@ internal fun ScanningService.startShannonDiagMonitoring() {
         // devices (non-Samsung modem, no platform signing), so surface it as
         // Disabled rather than Error to avoid alarming the user.
         ScanningServiceState.shannonDiagStatus.value = SubsystemStatus.Disabled
+        broadcastSubsystemStatus()
         Log.d(TAG, "Shannon diagnostics not available: ${capability.displayName}")
         return
     }
@@ -953,6 +954,7 @@ internal fun ScanningService.stopShannonDiagMonitoring() {
     shannonAnomalyJob = null
     shannonDiagMonitor?.stopMonitoring()
     ScanningServiceState.shannonDiagStatus.value = SubsystemStatus.Idle
+    broadcastSubsystemStatus()
     Log.d(TAG, "Shannon SDM diagnostic monitoring stopped")
 }
 

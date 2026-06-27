@@ -1504,6 +1504,7 @@ private fun SubsystemStatusCard(uiState: MainUiState) {
             SubsystemRow("Location", uiState.locationStatus)
             SubsystemRow("Cellular", uiState.cellularStatus)
             SubsystemRow("Satellite", uiState.satelliteStatus)
+            SubsystemRow("Shannon (Modem)", uiState.shannonStatus)
         }
     }
 }

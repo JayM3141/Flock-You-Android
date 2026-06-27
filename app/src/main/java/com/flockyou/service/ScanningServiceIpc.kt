@@ -99,6 +99,7 @@ object ScanningServiceIpc {
     const val KEY_LOCATION_STATUS = "location_status"
     const val KEY_CELLULAR_STATUS = "cellular_status"
     const val KEY_SATELLITE_STATUS = "satellite_status"
+    const val KEY_SHANNON_STATUS = "shannon_status"
     const val KEY_ERROR_MESSAGE = "error_message"
 
     // Bundle keys for scan settings
@@ -172,7 +173,8 @@ object ScanningServiceIpc {
                             wifiStatus = bundle.getString(KEY_WIFI_STATUS, "Idle"),
                             locationStatus = bundle.getString(KEY_LOCATION_STATUS, "Idle"),
                             cellularStatus = bundle.getString(KEY_CELLULAR_STATUS, "Idle"),
-                            satelliteStatus = bundle.getString(KEY_SATELLITE_STATUS, "Idle")
+                            satelliteStatus = bundle.getString(KEY_SATELLITE_STATUS, "Idle"),
+                            shannonStatus = bundle.getString(KEY_SHANNON_STATUS, "Idle")
                         )
                     }
                     MSG_SCANNING_STARTED -> {
@@ -195,7 +197,8 @@ object ScanningServiceIpc {
                             wifiStatus = bundle.getString(KEY_WIFI_STATUS),
                             locationStatus = bundle.getString(KEY_LOCATION_STATUS),
                             cellularStatus = bundle.getString(KEY_CELLULAR_STATUS),
-                            satelliteStatus = bundle.getString(KEY_SATELLITE_STATUS)
+                            satelliteStatus = bundle.getString(KEY_SATELLITE_STATUS),
+                            shannonStatus = bundle.getString(KEY_SHANNON_STATUS)
                         )
                     }
                     MSG_SEEN_BLE_DEVICES -> {
@@ -368,6 +371,9 @@ class ScanningServiceConnection(private val context: Context) {
 
     private val _satelliteStatus = MutableStateFlow("Idle")
     val satelliteStatus: StateFlow<String> = _satelliteStatus.asStateFlow()
+
+    private val _shannonStatus = MutableStateFlow("Idle")
+    val shannonStatus: StateFlow<String> = _shannonStatus.asStateFlow()
 
     // Seen devices (mirrored from service process)
     private val _seenBleDevices = MutableStateFlow<List<SeenDevice>>(emptyList())
@@ -894,7 +900,8 @@ class ScanningServiceConnection(private val context: Context) {
         wifiStatus: String,
         locationStatus: String,
         cellularStatus: String,
-        satelliteStatus: String
+        satelliteStatus: String,
+        shannonStatus: String
     ) {
         _isScanning.update { isScanning }
         _detectionCount.update { detectionCount }
@@ -904,6 +911,7 @@ class ScanningServiceConnection(private val context: Context) {
         _locationStatus.update { locationStatus }
         _cellularStatus.update { cellularStatus }
         _satelliteStatus.update { satelliteStatus }
+        _shannonStatus.update { shannonStatus }
     }
 
     internal fun updateScanning(isScanning: Boolean) {
@@ -919,13 +927,15 @@ class ScanningServiceConnection(private val context: Context) {
         wifiStatus: String?,
         locationStatus: String?,
         cellularStatus: String?,
-        satelliteStatus: String?
+        satelliteStatus: String?,
+        shannonStatus: String? = null
     ) {
         bleStatus?.let { status -> _bleStatus.update { status } }
         wifiStatus?.let { status -> _wifiStatus.update { status } }
         locationStatus?.let { status -> _locationStatus.update { status } }
         cellularStatus?.let { status -> _cellularStatus.update { status } }
         satelliteStatus?.let { status -> _satelliteStatus.update { status } }
+        shannonStatus?.let { status -> _shannonStatus.update { status } }
     }
 
     internal fun updateSeenBleDevices(json: String?) {

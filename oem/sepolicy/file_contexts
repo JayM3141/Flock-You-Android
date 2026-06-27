@@ -1,0 +1,11 @@
+# SELinux file context for the Samsung Shannon modem diagnostic node.
+#
+# Append this line to your device's sepolicy file_contexts so the kernel
+# labels /dev/umts_dm0 with the type referenced by flockyou_shannon.te:
+#   device/<vendor>/<device>/sepolicy/file_contexts
+#
+# Some Samsung/Exynos device trees already label this node (often as
+# radio_device or a vendor-specific type). If so, do NOT add a conflicting
+# label here — instead grant access to the existing type in flockyou_shannon.te.
+
+/dev/umts_dm0    u:object_r:umts_dm0_device:s0

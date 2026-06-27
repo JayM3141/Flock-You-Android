@@ -31,6 +31,24 @@ disables Shannon diagnostics.
 4. **System/priv-app installation**: The app must be in `/system/priv-app/` or
    `/system_ext/priv-app/`
 
+## Access Models (rooted vs non-rooted)
+
+Reading `/dev/umts_dm0` is blocked for ordinary apps by the kernel's SELinux
+policy. An installed APK **cannot** grant itself this access — the policy lives
+in the device's system image and is loaded at boot. There are three deployment
+models:
+
+| Model | Root at runtime? | How access is granted | Live capture works? |
+|-------|------------------|-----------------------|---------------------|
+| **Custom ROM / OEM build** (GrapheneOS, LineageOS, AOSP device build) | No | `flockyou_shannon.te` baked into the ROM; app platform-signed as a priv-app | Yes |
+| **Rooted stock device** (Magisk) | Yes | Relabel the node / run a root helper to grant access | Yes |
+| **Stock, locked, non-rooted device + sideloaded APK** | No | Not possible — SELinux denies access and the app cannot change policy | No (reports `Disabled`) |
+
+The **non-rooted path** is the custom-ROM model: the running device is not
+rooted, but the SELinux policy below is compiled into the system image so the
+platform-signed app can read the node. This is the recommended way to ship
+Shannon diagnostics to end users without requiring them to root their phones.
+
 ## SELinux Setup
 
 ### 1. Add the policy file
