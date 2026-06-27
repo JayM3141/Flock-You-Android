@@ -1504,6 +1504,18 @@ private fun SubsystemStatusCard(uiState: MainUiState) {
             SubsystemRow("Location", uiState.locationStatus)
             SubsystemRow("Cellular", uiState.cellularStatus)
             SubsystemRow("Satellite", uiState.satelliteStatus)
+            SubsystemRow(
+                name = "Shannon (Modem)",
+                status = uiState.shannonStatus,
+                // Raw baseband capture needs an accessible /dev/umts_dm0, which a
+                // stock locked phone denies via SELinux. Make clear that this is
+                // expected and that standard cellular detection still runs.
+                subtitle = if (uiState.shannonStatus == com.flockyou.service.SubsystemStatus.Disabled) {
+                    "Needs custom ROM/root \u2014 standard cellular detection active"
+                } else {
+                    null
+                }
+            )
         }
     }
 }
@@ -1511,17 +1523,29 @@ private fun SubsystemStatusCard(uiState: MainUiState) {
 @Composable
 private fun SubsystemRow(
     name: String,
-    status: com.flockyou.service.SubsystemStatus
+    status: com.flockyou.service.SubsystemStatus,
+    subtitle: String? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             val (statusText, statusColor) = when (status) {

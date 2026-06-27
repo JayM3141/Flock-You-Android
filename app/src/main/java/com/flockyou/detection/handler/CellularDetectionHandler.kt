@@ -743,6 +743,16 @@ class CellularDetectionHandler @Inject constructor(
             CellularMonitor.AnomalyType.CELL_TOWER_CHANGE ->
                 "Your phone switched to a different cell tower. This is usually normal during " +
                 "movement, but can be suspicious when combined with other indicators."
+
+            CellularMonitor.AnomalyType.NEIGHBOR_LIST_ANOMALY ->
+                "Your phone can normally see several nearby cell towers, but the neighbour list " +
+                "suddenly collapsed to a single strong tower. IMSI catchers often suppress " +
+                "neighbouring towers to force your phone to stay locked onto the rogue cell."
+
+            CellularMonitor.AnomalyType.TIMING_ADVANCE_ANOMALY ->
+                "The network reports the serving tower as being extremely close to you while " +
+                "broadcasting a strong signal. This proximity profile matches a portable fake " +
+                "tower (IMSI catcher) placed near you rather than a distant macro cell."
         }
     }
 
@@ -1015,6 +1025,8 @@ class CellularDetectionHandler @Inject constructor(
             CellularMonitor.AnomalyType.SIGNAL_SPIKE -> DetectionMethod.CELL_SIGNAL_ANOMALY
             CellularMonitor.AnomalyType.LAC_TAC_ANOMALY -> DetectionMethod.CELL_LAC_TAC_ANOMALY
             CellularMonitor.AnomalyType.UNKNOWN_CELL_FAMILIAR_AREA -> DetectionMethod.CELL_TOWER_CHANGE
+            CellularMonitor.AnomalyType.NEIGHBOR_LIST_ANOMALY -> DetectionMethod.CELL_SIGNAL_ANOMALY
+            CellularMonitor.AnomalyType.TIMING_ADVANCE_ANOMALY -> DetectionMethod.CELL_SIGNAL_ANOMALY
         }
     }
 
@@ -1056,6 +1068,9 @@ class CellularDetectionHandler @Inject constructor(
             CellularMonitor.AnomalyType.SIGNAL_SPIKE -> CellularPattern.SIGNAL_SPIKE
             CellularMonitor.AnomalyType.LAC_TAC_ANOMALY -> CellularPattern.LAC_TAC_ANOMALY
             CellularMonitor.AnomalyType.UNKNOWN_CELL_FAMILIAR_AREA -> CellularPattern.UNKNOWN_CELL_TOWER
+            // Non-root heuristics gate behind existing default-on toggles.
+            CellularMonitor.AnomalyType.NEIGHBOR_LIST_ANOMALY -> CellularPattern.UNKNOWN_CELL_TOWER
+            CellularMonitor.AnomalyType.TIMING_ADVANCE_ANOMALY -> CellularPattern.SIGNAL_SPIKE
         }
     }
 
@@ -1077,6 +1092,8 @@ class CellularDetectionHandler @Inject constructor(
             CellularMonitor.AnomalyType.LAC_TAC_ANOMALY -> 20            // Technical anomaly, needs context
             CellularMonitor.AnomalyType.SIGNAL_SPIKE -> 15               // Common near towers, needs context
             CellularMonitor.AnomalyType.CELL_TOWER_CHANGE -> 10          // Very common, baseline event
+            CellularMonitor.AnomalyType.NEIGHBOR_LIST_ANOMALY -> 30      // Neighbour suppression is a strong signal
+            CellularMonitor.AnomalyType.TIMING_ADVANCE_ANOMALY -> 25     // Co-located tower, needs corroboration
         }
     }
 
@@ -1090,6 +1107,8 @@ class CellularDetectionHandler @Inject constructor(
             CellularMonitor.AnomalyType.RAPID_CELL_SWITCHING -> "🔄"
             CellularMonitor.AnomalyType.LAC_TAC_ANOMALY -> "📍"
             CellularMonitor.AnomalyType.STATIONARY_CELL_CHANGE -> "🚫"
+            CellularMonitor.AnomalyType.NEIGHBOR_LIST_ANOMALY -> "📡"
+            CellularMonitor.AnomalyType.TIMING_ADVANCE_ANOMALY -> "📏"
         }
     }
 
@@ -1103,6 +1122,8 @@ class CellularDetectionHandler @Inject constructor(
             CellularMonitor.AnomalyType.RAPID_CELL_SWITCHING -> "Rapid Cell Switching"
             CellularMonitor.AnomalyType.LAC_TAC_ANOMALY -> "Location Area Anomaly"
             CellularMonitor.AnomalyType.STATIONARY_CELL_CHANGE -> "Cell Changed While Stationary"
+            CellularMonitor.AnomalyType.NEIGHBOR_LIST_ANOMALY -> "Neighbor Cell List Collapsed"
+            CellularMonitor.AnomalyType.TIMING_ADVANCE_ANOMALY -> "Tower Suspiciously Close"
         }
     }
 

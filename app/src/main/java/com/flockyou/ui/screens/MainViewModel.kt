@@ -103,6 +103,7 @@ data class MainUiState(
     val locationStatus: com.flockyou.service.SubsystemStatus = com.flockyou.service.SubsystemStatus.Idle,
     val cellularStatus: com.flockyou.service.SubsystemStatus = com.flockyou.service.SubsystemStatus.Idle,
     val satelliteStatus: com.flockyou.service.SubsystemStatus = com.flockyou.service.SubsystemStatus.Idle,
+    val shannonStatus: com.flockyou.service.SubsystemStatus = com.flockyou.service.SubsystemStatus.Idle,
     val recentErrors: List<com.flockyou.service.ScanError> = emptyList(),
     // Seen devices (from IPC)
     val seenBleDevices: List<com.flockyou.service.SeenDevice> = emptyList(),
@@ -331,6 +332,7 @@ class MainViewModel @Inject constructor(
                 serviceConnection.locationStatus,
                 serviceConnection.cellularStatus,
                 serviceConnection.satelliteStatus,
+                serviceConnection.shannonStatus,
                 serviceConnection.lastDetection
             ) { values ->
                 IpcStateUpdate(
@@ -341,7 +343,8 @@ class MainViewModel @Inject constructor(
                     locationStatus = values[4] as String,
                     cellularStatus = values[5] as String,
                     satelliteStatus = values[6] as String,
-                    lastDetection = values[7] as? Detection
+                    shannonStatus = values[7] as String,
+                    lastDetection = values[8] as? Detection
                 )
             }.collect { update ->
                 _uiState.update {
@@ -353,6 +356,7 @@ class MainViewModel @Inject constructor(
                         locationStatus = com.flockyou.service.SubsystemStatus.fromIpcString(update.locationStatus),
                         cellularStatus = com.flockyou.service.SubsystemStatus.fromIpcString(update.cellularStatus),
                         satelliteStatus = com.flockyou.service.SubsystemStatus.fromIpcString(update.satelliteStatus),
+                        shannonStatus = com.flockyou.service.SubsystemStatus.fromIpcString(update.shannonStatus),
                         lastDetection = update.lastDetection
                     )
                 }
@@ -710,6 +714,7 @@ class MainViewModel @Inject constructor(
         val locationStatus: String,
         val cellularStatus: String,
         val satelliteStatus: String,
+        val shannonStatus: String,
         val lastDetection: Detection?
     )
 

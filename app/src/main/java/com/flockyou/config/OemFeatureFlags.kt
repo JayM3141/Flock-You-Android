@@ -46,7 +46,7 @@ import com.flockyou.BuildConfig
  * - AI_ENABLED: On-device AI analysis features
  * - TOR_ENABLED: Tor network integration for anonymous updates
  * - MAP_ENABLED: Map display and geolocation features
- * - SHANNON_DIAG_ENABLED: Shannon modem diagnostic capture (OEM only)
+ * - SHANNON_DIAG_ENABLED: Shannon modem diagnostic capture (live capture needs platform signing + SELinux)
  */
 object OemFeatureFlags {
 
@@ -110,7 +110,9 @@ object OemFeatureFlags {
      * Shannon modem diagnostic capture.
      * When enabled, allows reading raw NAS/RRC signaling from Samsung Shannon modems
      * via /dev/umts_dm0 for definitive IMSI catcher detection.
-     * Requires OEM build with SELinux policy granting access to the diagnostic device node.
+     * Enabled by default in all flavors; live capture additionally requires platform
+     * signing and an SELinux policy granting access to the diagnostic device node,
+     * otherwise the monitor degrades gracefully (ACCESS_DENIED / NO_DEVICE_NODE).
      */
     val SHANNON_DIAG_ENABLED: Boolean
         get() = BuildConfig.FEATURE_SHANNON_DIAG_ENABLED

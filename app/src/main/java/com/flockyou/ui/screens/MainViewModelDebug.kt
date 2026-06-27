@@ -113,6 +113,7 @@ fun MainViewModel.exportAllDebugInfo(): String {
     sb.appendLine("Location: ${state.locationStatus}")
     sb.appendLine("Cellular: ${state.cellularStatus}")
     sb.appendLine("Satellite: ${state.satelliteStatus}")
+    sb.appendLine("Shannon: ${state.shannonStatus}")
     sb.appendLine()
 
     // Detection Summary

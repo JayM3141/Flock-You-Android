@@ -74,6 +74,7 @@ internal fun ScanningService.sendStateToClient(client: Messenger) {
         val locationStatus = ScanningServiceState.locationStatus
         val cellularStatus = ScanningServiceState.cellularStatus
         val satelliteStatus = ScanningServiceState.satelliteStatus
+        val shannonStatus = ScanningServiceState.shannonDiagStatus
 
         val msg = Message.obtain(null, ScanningServiceIpc.MSG_STATE_UPDATE)
         msg.data = Bundle().apply {
@@ -85,6 +86,7 @@ internal fun ScanningService.sendStateToClient(client: Messenger) {
             putString(ScanningServiceIpc.KEY_LOCATION_STATUS, locationStatus.value.toIpcString())
             putString(ScanningServiceIpc.KEY_CELLULAR_STATUS, cellularStatus.value.toIpcString())
             putString(ScanningServiceIpc.KEY_SATELLITE_STATUS, satelliteStatus.value.toIpcString())
+            putString(ScanningServiceIpc.KEY_SHANNON_STATUS, shannonStatus.value.toIpcString())
         }
         Log.d(TAG, "Sending MSG_STATE_UPDATE: isScanning=${isScanning.value}, scanStatus=${scanStatus.value}")
         client.send(msg)
@@ -544,6 +546,7 @@ internal fun ScanningService.broadcastSubsystemStatus() {
                 putString(ScanningServiceIpc.KEY_LOCATION_STATUS, ScanningServiceState.locationStatus.value.toIpcString())
                 putString(ScanningServiceIpc.KEY_CELLULAR_STATUS, ScanningServiceState.cellularStatus.value.toIpcString())
                 putString(ScanningServiceIpc.KEY_SATELLITE_STATUS, ScanningServiceState.satelliteStatus.value.toIpcString())
+                putString(ScanningServiceIpc.KEY_SHANNON_STATUS, ScanningServiceState.shannonDiagStatus.value.toIpcString())
             }
         }
     }
