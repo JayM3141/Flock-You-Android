@@ -22,8 +22,10 @@ disables Shannon diagnostics.
 
 ## Requirements
 
-1. **OEM build**: Shannon diagnostics requires `FEATURE_SHANNON_DIAG_ENABLED=true`,
-   which is only set in the OEM flavor
+1. **Build with the feature flag**: Shannon diagnostics requires
+   `FEATURE_SHANNON_DIAG_ENABLED=true`. This is enabled by default in the
+   sideload, system, and OEM flavors, so the code is reachable at runtime.
+   Live capture still depends on the platform-signing and SELinux requirements below.
 2. **Platform signing**: The APK must be signed with the device's platform certificate
 3. **SELinux policy**: A policy granting `platform_app` read access to `/dev/umts_dm0`
 4. **System/priv-app installation**: The app must be in `/system/priv-app/` or
@@ -110,9 +112,10 @@ In the app's Service Health screen, look for:
 
 The Shannon diagnostic feature is designed to degrade gracefully:
 
-- **Sideload/System builds**: Feature flag is `false`, code is present but never executes
-- **OEM build on Qualcomm device**: `ShannonCapabilityDetector` returns `NO_SHANNON_MODEM`
-- **OEM build without SELinux policy**: Returns `ACCESS_DENIED`
+- **Non-Shannon device (e.g. Qualcomm)**: `ShannonCapabilityDetector` returns `NO_SHANNON_MODEM`
+- **Shannon device without the diagnostic node**: Returns `NO_DEVICE_NODE`
+- **Without platform signing / SELinux policy (e.g. a sideloaded APK)**: Returns `ACCESS_DENIED`
+- **Feature flag disabled in a custom build**: Returns `FEATURE_DISABLED`, code never executes
 - **Device node disappears at runtime**: Monitor reconnects with backoff (5 attempts)
 - **Standard cellular detection continues independently** -- Shannon is additive, never replaces
 
