@@ -196,6 +196,67 @@ class CellularMonitor(
         // 5G-specific thresholds - 5G has more frequent handoffs due to smaller cells and beam management
         private const val NR_5G_STATIONARY_HANDOFF_GRACE_PERIOD_MS = 120_000L // 2 minutes grace period for new 5G cells
         private const val NR_5G_MINIMUM_IMSI_SCORE_TO_REPORT = 40 // Higher threshold for 5G (was implicit 0)
+
+        // ==================== NON-ROOT HEURISTIC THRESHOLDS ====================
+        // These signals are derived purely from public Android telephony APIs
+        // (TelephonyManager.getAllCellInfo / CellSignalStrengthLte), so they work
+        // on stock, non-rooted devices where raw baseband (Shannon) is unavailable.
+
+        // A real macro cell almost always exposes neighbours. IMSI catchers commonly
+        // suppress the neighbour cell list to lock the handset onto the rogue cell.
+        // Treat a serving cell at least this strong with zero visible neighbours
+        // (when we previously saw several) as a suspicious "cell isolation" signal.
+        private const val NEIGHBOR_ANOMALY_MIN_PREV_NEIGHBORS = 2
+        private const val NEIGHBOR_ANOMALY_MIN_SIGNAL_DBM = -95
+
+        // LTE timing advance encodes round-trip distance to the tower (~78 m per step).
+        // A timing advance of 0 means the tower is effectively on top of the handset;
+        // combined with a strong signal this matches a portable/co-located IMSI catcher.
+        // CellSignalStrengthLte.getTimingAdvance() returns Integer.MAX_VALUE when the
+        // value is unavailable; callers must map that to null.
+        private const val TIMING_ADVANCE_SUSPICIOUS_MAX = 0
+        private const val TIMING_ADVANCE_MIN_SIGNAL_DBM = -90
+
+        /**
+         * Neighbour cell list anomaly ("cell isolation"): the serving cell is strong
+         * but its neighbour list collapsed to nothing, when we previously observed
+         * several neighbours. This is a classic non-root IMSI-catcher heuristic
+         * (used by SnoopSnitch). Pure function so it can be unit tested without an
+         * Android telephony stack.
+         *
+         * @param previousNeighborCount neighbours seen in the prior snapshot (-1 = unknown)
+         * @param currentNeighborCount neighbours seen now (-1 = unknown)
+         * @param signalDbm serving-cell signal strength in dBm
+         */
+        fun isNeighborListAnomaly(
+            previousNeighborCount: Int,
+            currentNeighborCount: Int,
+            signalDbm: Int
+        ): Boolean {
+            if (previousNeighborCount < NEIGHBOR_ANOMALY_MIN_PREV_NEIGHBORS) return false
+            if (currentNeighborCount != 0) return false
+            return signalDbm >= NEIGHBOR_ANOMALY_MIN_SIGNAL_DBM
+        }
+
+        /**
+         * Timing advance anomaly: an LTE timing advance of 0 (tower essentially
+         * co-located) together with a strong signal. Pure function for unit testing.
+         *
+         * @param timingAdvance LTE timing advance, or null when unavailable
+         * @param signalDbm serving-cell signal strength in dBm
+         */
+        fun isTimingAdvanceAnomaly(timingAdvance: Int?, signalDbm: Int): Boolean {
+            val ta = timingAdvance ?: return false
+            if (ta < 0) return false
+            return ta <= TIMING_ADVANCE_SUSPICIOUS_MAX && signalDbm >= TIMING_ADVANCE_MIN_SIGNAL_DBM
+        }
+
+        /**
+         * Normalises a raw LTE timing-advance reading into either a usable value or
+         * null. [Integer.MAX_VALUE] and negative values mean "unavailable".
+         */
+        fun normalizeTimingAdvance(rawTimingAdvance: Int): Int? =
+            if (rawTimingAdvance in 0 until Int.MAX_VALUE) rawTimingAdvance else null
     }
     
     private val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
@@ -336,7 +397,12 @@ class CellularMonitor(
         val signalStrength: Int, // dBm
         val networkType: Int,
         val latitude: Double?,
-        val longitude: Double?
+        val longitude: Double?,
+        // Number of non-serving (neighbour) cells visible via getAllCellInfo.
+        // -1 means unknown/not captured. Used for the non-root neighbour-list heuristic.
+        val neighborCellCount: Int = -1,
+        // LTE timing advance (steps of ~78 m), or null when unavailable.
+        val timingAdvance: Int? = null
     )
     
     data class LocationSnapshot(
@@ -528,7 +594,11 @@ class CellularMonitor(
         LAC_TAC_ANOMALY("Location Area Anomaly", 20, "📍", true,
             "The cell tower's location area code changed without actually changing towers. This is technically unusual and can indicate network manipulation."),
         STATIONARY_CELL_CHANGE("Cell Changed While Stationary", 15, "🚫", true,
-            "Your phone switched towers even though you weren't moving. Single occurrences are often normal (network load balancing), but repeated changes are suspicious.")
+            "Your phone switched towers even though you weren't moving. Single occurrences are often normal (network load balancing), but repeated changes are suspicious."),
+        NEIGHBOR_LIST_ANOMALY("Neighbor Cell List Collapsed", 30, "📡", true,
+            "Your phone can normally see several nearby cell towers, but suddenly only one strong tower is visible. IMSI catchers often hide neighboring towers to force your phone to stay connected to them."),
+        TIMING_ADVANCE_ANOMALY("Tower Suspiciously Close", 25, "📏", true,
+            "The network reports the cell tower as being extremely close to you (essentially on top of you) while broadcasting a strong signal. This matches the behavior of a portable fake tower placed nearby.")
     }
     
     /**
@@ -990,6 +1060,64 @@ class CellularMonitor(
                 technicalDetails = buildCellularTechnicalDetails(analysis, current, previous),
                 contributingFactors = contributingFactors,
                 confidence = confidence,
+                current = current,
+                previous = previous,
+                analysis = analysis
+            )
+            return
+        }
+
+        // 2b. NON-ROOT HEURISTICS: neighbour-list collapse and timing-advance anomaly.
+        // These rely only on public telephony APIs, so they catch IMSI-catcher behaviour
+        // on stock, non-rooted devices where raw baseband (Shannon) is unavailable.
+        val neighborAnomaly = isNeighborListAnomaly(
+            previousNeighborCount = previous.neighborCellCount,
+            currentNeighborCount = current.neighborCellCount,
+            signalDbm = current.signalStrength
+        )
+        val taAnomaly = isTimingAdvanceAnomaly(current.timingAdvance, current.signalStrength)
+        val cellChangedOrNew = current.cellId != previous.cellId
+
+        if (neighborAnomaly) {
+            val factors = buildCellularContributingFactors(analysis) + buildList {
+                add("Neighbour cell list collapsed to 0 (was ${previous.neighborCellCount})")
+                add("Serving signal ${current.signalStrength} dBm")
+                if (taAnomaly) add("Timing advance 0 (tower co-located)")
+                if (!currentCellTrusted) add("Serving cell not trusted (trust ${analysis.cellTrustScore}%)")
+                if (analysis.signalSpikeDetected) add("Signal spike +${analysis.signalDeltaDbm} dBm")
+            }
+            // Multi-factor gate to avoid flagging devices that simply never report neighbours.
+            val corroborated = taAnomaly || analysis.signalSpikeDetected ||
+                !currentCellTrusted || cellChangedOrNew || analysis.imsiCatcherScore >= 30
+            if (corroborated) {
+                val confidence = if (taAnomaly) AnomalyConfidence.HIGH else AnomalyConfidence.MEDIUM
+                reportAnomalyImproved(
+                    type = AnomalyType.NEIGHBOR_LIST_ANOMALY,
+                    description = "Only one strong cell tower is visible and nearby towers disappeared - possible IMSI catcher locking your phone",
+                    technicalDetails = buildCellularTechnicalDetails(analysis, current, previous),
+                    contributingFactors = factors,
+                    confidence = confidence,
+                    current = current,
+                    previous = previous,
+                    analysis = analysis
+                )
+                return
+            }
+        }
+
+        if (taAnomaly && (!currentCellTrusted || analysis.signalSpikeDetected || cellChangedOrNew)) {
+            val factors = buildCellularContributingFactors(analysis) + buildList {
+                add("Timing advance 0 (tower essentially co-located)")
+                add("Serving signal ${current.signalStrength} dBm")
+                if (!currentCellTrusted) add("Serving cell not trusted (trust ${analysis.cellTrustScore}%)")
+                if (analysis.signalSpikeDetected) add("Signal spike +${analysis.signalDeltaDbm} dBm")
+            }
+            reportAnomalyImproved(
+                type = AnomalyType.TIMING_ADVANCE_ANOMALY,
+                description = "Cell tower reports as extremely close while broadcasting a strong signal - matches a portable fake tower",
+                technicalDetails = buildCellularTechnicalDetails(analysis, current, previous),
+                contributingFactors = factors,
+                confidence = AnomalyConfidence.MEDIUM,
                 current = current,
                 previous = previous,
                 analysis = analysis
@@ -1599,7 +1727,16 @@ class CellularMonitor(
                 networkType = TelephonyManager.NETWORK_TYPE_NR
             }
         }
-        
+
+        // Non-root heuristic inputs (public APIs only):
+        // - neighbour count = visible cells that are NOT the serving cell
+        // - LTE timing advance from the serving cell's signal strength
+        val neighborCellCount = (cellInfoList.size - registeredCells.size).coerceAtLeast(0)
+        val timingAdvance = (registeredCell as? CellInfoLte)
+            ?.cellSignalStrength
+            ?.timingAdvance
+            ?.let { normalizeTimingAdvance(it) }
+
         return CellSnapshot(
             timestamp = System.currentTimeMillis(),
             cellId = cellId,
@@ -1610,7 +1747,9 @@ class CellularMonitor(
             signalStrength = signalDbm,
             networkType = networkType,
             latitude = currentLatitude,
-            longitude = currentLongitude
+            longitude = currentLongitude,
+            neighborCellCount = neighborCellCount,
+            timingAdvance = timingAdvance
         )
     }
     
@@ -2502,6 +2641,8 @@ class CellularMonitor(
             AnomalyType.SIGNAL_SPIKE -> DetectionMethod.CELL_SIGNAL_ANOMALY
             AnomalyType.LAC_TAC_ANOMALY -> DetectionMethod.CELL_LAC_TAC_ANOMALY
             AnomalyType.UNKNOWN_CELL_FAMILIAR_AREA -> DetectionMethod.CELL_TOWER_CHANGE
+            AnomalyType.NEIGHBOR_LIST_ANOMALY -> DetectionMethod.CELL_SIGNAL_ANOMALY
+            AnomalyType.TIMING_ADVANCE_ANOMALY -> DetectionMethod.CELL_SIGNAL_ANOMALY
         }
         
         val deviceName = "${anomaly.type.emoji} ${anomaly.type.displayName}"

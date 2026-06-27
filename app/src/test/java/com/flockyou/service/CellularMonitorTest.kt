@@ -734,6 +734,8 @@ class CellularMonitorTest {
                 AnomalyType.SIGNAL_SPIKE -> DetectionMethod.CELL_SIGNAL_ANOMALY
                 AnomalyType.LAC_TAC_ANOMALY -> DetectionMethod.CELL_LAC_TAC_ANOMALY
                 AnomalyType.UNKNOWN_CELL_FAMILIAR_AREA -> DetectionMethod.CELL_TOWER_CHANGE
+                AnomalyType.NEIGHBOR_LIST_ANOMALY -> DetectionMethod.CELL_SIGNAL_ANOMALY
+                AnomalyType.TIMING_ADVANCE_ANOMALY -> DetectionMethod.CELL_SIGNAL_ANOMALY
             }
 
             return Detection(
