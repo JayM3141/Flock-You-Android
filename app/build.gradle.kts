@@ -118,7 +118,9 @@ android {
             buildConfigField("boolean", "FEATURE_AI_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_TOR_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_MAP_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_SHANNON_DIAG_ENABLED", "false")
+            // Shannon SDM diagnostics ship enabled; the monitor degrades gracefully
+            // (reports unavailable) on devices without an accessible /dev/umts_dm0.
+            buildConfigField("boolean", "FEATURE_SHANNON_DIAG_ENABLED", "true")
 
             // Standard manifest - no special OEM configurations
             manifestPlaceholders["appLabel"] = "@string/app_name"
@@ -142,7 +144,8 @@ android {
             buildConfigField("boolean", "FEATURE_AI_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_TOR_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_MAP_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_SHANNON_DIAG_ENABLED", "false")
+            // System builds have priv-app access, so Shannon diagnostics are enabled too.
+            buildConfigField("boolean", "FEATURE_SHANNON_DIAG_ENABLED", "true")
 
             // System app label suffix for identification
             manifestPlaceholders["appLabel"] = "@string/app_name_system"
