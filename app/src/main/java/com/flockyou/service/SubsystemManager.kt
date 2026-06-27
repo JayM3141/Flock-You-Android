@@ -871,9 +871,10 @@ internal fun ScanningService.startShannonDiagMonitoring() {
 
     val capability = com.flockyou.shannon.ShannonCapabilityDetector.detect()
     if (capability != com.flockyou.shannon.ShannonCapabilityDetector.ShannonStatus.AVAILABLE) {
-        ScanningServiceState.shannonDiagStatus.value = SubsystemStatus.Error(
-            -1, "Shannon: ${capability.displayName}"
-        )
+        // Lack of a readable Shannon interface is an expected condition on most
+        // devices (non-Samsung modem, no platform signing), so surface it as
+        // Disabled rather than Error to avoid alarming the user.
+        ScanningServiceState.shannonDiagStatus.value = SubsystemStatus.Disabled
         Log.d(TAG, "Shannon diagnostics not available: ${capability.displayName}")
         return
     }
